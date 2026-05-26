@@ -29,10 +29,45 @@ jobs:
         pyinstaller --name=TODO待办事项 --onefile --windowed --icon=app_icon.ico --clean todo_app.py
     
     - name: 重命名可执行文件（添加版本号）
+      shell: pwsh
       run: |
         $version = "${{ github.ref_name }}"
         $version = $version -replace '^v', ''
         Move-Item -Path "dist/TODO待办事项.exe" -Destination "dist/TODO待办事项-v${version}.exe"
+        Write-Host "✓ 已重命名为: TODO待办事项-v${version}.exe"
+    
+    - name: 提取版本描述
+      shell: pwsh
+      run: |
+        $version = "${{ github.ref_name }}"
+        $version = $version -replace '^v', ''
+        
+        Write-Host "提取版本 v$version 的描述..."
+        
+        # 检查 RELEASE_NOTES.md 是否存在
+        if (Test-Path "RELEASE_NOTES.md") {
+          try {
+            $content = Get-Content -Path "RELEASE_NOTES.md" -Raw -Encoding UTF8
+            
+            # 提取对应版本的描述
+            $pattern = "(?s)(##\s+v$version.*?)(?=##\s+v[\d.]+|$)"
+            if ($content -match $pattern) {
+              $description = $matches[1].Trim()
+              $description | Out-File -FilePath "release_body.md" -Encoding UTF8
+              Write-Host "✓ 已提取版本 v$version 的描述"
+            } else {
+              # 如果找不到对应版本，使用整个文件
+              Write-Host "⚠️ 未找到版本 v$version 的描述，使用整个 RELEASE_NOTES.md"
+              $content | Out-File -FilePath "release_body.md" -Encoding UTF8
+            }
+          } catch {
+            Write-Host "⚠️ 读取 RELEASE_NOTES.md 失败，使用默认描述"
+            "Release v$version" | Out-File -FilePath "release_body.md" -Encoding UTF8
+          }
+        } else {
+          Write-Host "⚠️ RELEASE_NOTES.md 不存在，使用默认描述"
+          "Release v$version" | Out-File -FilePath "release_body.md" -Encoding UTF8
+        }
     
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
@@ -47,7 +82,7 @@ jobs:
         files: dist/TODO待办事项-*.exe
         draft: false
         prerelease: false
-        body_path: RELEASE_NOTES.md
-        generate_release_notes: false  # 改为 false，避免与 body_path 冲突
+        body_path: release_body.md
+        generate_release_notes: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
