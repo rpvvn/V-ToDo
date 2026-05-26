@@ -38,6 +38,7 @@ env/
 
 # 应用数据
 todos.json
+config.json
 
 # 临时 Release 描述文件
 .release_notes_temp.md

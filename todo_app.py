@@ -512,11 +512,11 @@ class TodoItem(QWidget):
 
     def setup_ui(self):
         """设置UI"""
-        self.setFixedHeight(75)  # 增加5px高度以适应两行文字
+        self.setFixedHeight(90)  # 增加高度以适应更多行文字
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(20, 10, 20, 10)
-        layout.setSpacing(15)
+        layout.setContentsMargins(15, 10, 15, 10)  # 减少左右边距
+        layout.setSpacing(10)  # 减少间距
 
         # 完成状态复选框 - 使用更大的尺寸
         self.checkbox = QCheckBox(self)
@@ -531,10 +531,10 @@ class TodoItem(QWidget):
 
         self.text_label = QLabel(self)
         self.text_label.setText(self.text_content)
-        self.text_label.setFont(QFont("Microsoft YaHei", 11))
-        # 启用文本换行，设置最大宽度
+        self.text_label.setFont(QFont("Microsoft YaHei", 10))  # 稍微减小字体
+        # 启用文本换行，让文本自适应宽度
         self.text_label.setWordWrap(True)
-        self.text_label.setMaximumWidth(200)  # 限制文本宽度，确保不会过宽
+        self.text_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         content_layout.addWidget(self.text_label)
 
         if self.date_content:
@@ -545,11 +545,11 @@ class TodoItem(QWidget):
 
         layout.addLayout(content_layout, 1)
 
-        # 状态显示区域（红框位置）
+        # 状态显示区域（到期显示框，宽度缩小到80%）
         self.status_label = QLabel(self)
-        self.status_label.setFont(QFont("Microsoft YaHei", 9))
+        self.status_label.setFont(QFont("Microsoft YaHei", 8))  # 减小字体以适应更窄的框
         self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setFixedSize(120, 40)
+        self.status_label.setFixedSize(96, 40)  # 120 × 0.8 = 96
         self.status_label.setStyleSheet(
             """
             QLabel {
@@ -2184,10 +2184,10 @@ class TodoApp(QMainWindow):
     def setup_window(self):
         """设置窗口"""
         self.setWindowTitle("TODO 待办事项")
-        # 初始窗口大小 - 会根据内容自动调整（增加宽度以适应设置面板）
-        self.setGeometry(100, 100, 360, 140)
-        # 设置最小宽度，防止文字折叠（缩减宽度到85%）
-        self.setMinimumWidth(360)
+        # 初始窗口大小 - 会根据内容自动调整（缩减宽度到75%）
+        self.setGeometry(100, 100, 270, 140)
+        # 设置最小宽度，防止文字折叠
+        self.setMinimumWidth(270)
 
         # 设置窗口标志 - 无边框，背景透明，工具窗口（不显示在任务栏）
         flags = Qt.FramelessWindowHint | Qt.Tool
@@ -2451,7 +2451,7 @@ class TodoApp(QMainWindow):
             # 待办列表面板 - 根据实际项目数量动态计算（无最大限制）
             category_height = 60
             bottom_buttons_height = 60
-            item_height = 77  # 每个待办项的高度（75 + 2间隔）
+            item_height = 92  # 每个待办项的高度（90 + 2间隔）
 
             todo_count = len(self.todo_panel.todo_items)
 
@@ -2465,10 +2465,10 @@ class TodoApp(QMainWindow):
         # 计算总高度
         total_height = top_bar_height + spacing + content_height
 
-        # 设置窗口大小 - 保持最小宽度（增加到480以适应状态显示）
+        # 设置窗口大小 - 保持最小宽度（缩减到75%，360以适应状态显示）
         self.setFixedHeight(total_height)
-        if self.width() < 480:
-            self.setFixedWidth(480)
+        if self.width() < 360:
+            self.setFixedWidth(360)
         else:
             self.setFixedWidth(self.width())
 
