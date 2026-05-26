@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.spec
+*.manifest
+
+# 虚拟环境
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 应用数据
+todos.json
+
+# 临时 Release 描述文件
+.release_notes_temp.md
+.version_temp
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 临时文件和测试文件
+test_*.py
+测试*.py
+测试*.md
+
+# 开发文档（已过时）
+⚡*.txt
+🎨*.txt
+
+*.md
+!README.md
+!README_CN.md
+
+# 批处理脚本（本地使用，但保留快速打包.bat）
+一键安装并打包.bat
+安装依赖.bat
+打包调试.bat
+重新打包.bat
+清理项目.bat
+智能发布.bat
+自动发布.bat
+# 版本号文件（临时）
+0.3.0
+5.0.0
+5.15.0
+
+# 构建脚本（已整合）
+build_exe.py
+create_icon.py

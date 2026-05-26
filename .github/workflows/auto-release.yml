@@ -1,0 +1,133 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'RELEASE_NOTES.md'  # 只在 RELEASE_NOTES.md 更新时触发
+  workflow_dispatch:  # 允许手动触发
+
+permissions:
+  contents: write  # 需要写权限来创建 Release 和 Tag
+
+jobs:
+  check-and-release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整历史，用于比较
+    
+    - name: 提取版本号和描述
+      id: extract
+      shell: pwsh
+      run: |
+        # 读取 RELEASE_NOTES.md
+        $content = Get-Content -Path "RELEASE_NOTES.md" -Raw -Encoding UTF8
+        
+        # 提取第一个版本号（## v3.2 格式）
+        if ($content -match '##\s+v([\d.]+)') {
+          $version = $matches[1]
+          Write-Output "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Output "找到版本号: v$version"
+        } else {
+          Write-Error "未找到版本号"
+          exit 1
+        }
+        
+        # 提取第一个版本的完整描述（从第一个 ## v 到下一个 ## v 或文件末尾）
+        $pattern = '(?s)(##\s+v[\d.]+.*?)(?=##\s+v[\d.]+|$)'
+        if ($content -match $pattern) {
+          $description = $matches[1].Trim()
+          
+          # 保存到文件
+          $description | Out-File -FilePath "release_body.md" -Encoding UTF8
+          Write-Output "✓ 已提取版本描述"
+          
+          # 显示前几行预览
+          Write-Output "描述预览:"
+          $description.Split("`n") | Select-Object -First 5 | ForEach-Object { Write-Output $_ }
+        } else {
+          Write-Error "未找到版本描述"
+          exit 1
+        }
+    
+    - name: 检查标签是否已存在
+      id: check_tag
+      shell: pwsh
+      run: |
+        $version = "${{ steps.extract.outputs.version }}"
+        $tagExists = git tag -l "v$version"
+        
+        if ($tagExists) {
+          Write-Output "exists=true" >> $env:GITHUB_OUTPUT
+          Write-Output "⚠️ 标签 v$version 已存在"
+        } else {
+          Write-Output "exists=false" >> $env:GITHUB_OUTPUT
+          Write-Output "✓ 标签 v$version 不存在，可以创建"
+        }
+    
+    - name: 设置 Python 环境
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: 安装依赖
+      if: steps.check_tag.outputs.exists == 'false'
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: 构建可执行文件
+      if: steps.check_tag.outputs.exists == 'false'
+      run: |
+        pyinstaller --name=TODO待办事项 --onefile --windowed --icon=app_icon.ico --clean todo_app.py
+    
+    - name: 重命名可执行文件
+      if: steps.check_tag.outputs.exists == 'false'
+      shell: pwsh
+      run: |
+        $version = "${{ steps.extract.outputs.version }}"
+        Move-Item -Path "dist/TODO待办事项.exe" -Destination "dist/TODO待办事项-v$version.exe"
+        Write-Output "✓ 已重命名为: TODO待办事项-v$version.exe"
+    
+    - name: 创建 Release
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ steps.extract.outputs.version }}
+        name: v${{ steps.extract.outputs.version }}
+        body_path: release_body.md
+        files: dist/TODO待办事项-*.exe
+        draft: false
+        prerelease: false
+        make_latest: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: 发布成功
+      if: steps.check_tag.outputs.exists == 'false'
+      run: |
+        echo "========================================="
+        echo "   ✓ 发布成功！"
+        echo "========================================="
+        echo "版本: v${{ steps.extract.outputs.version }}"
+        echo "查看 Release: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.extract.outputs.version }}"
+        echo "========================================="
+    
+    - name: 标签已存在，跳过发布
+      if: steps.check_tag.outputs.exists == 'true'
+      run: |
+        echo "========================================="
+        echo "   ⚠️ 标签已存在，跳过发布"
+        echo "========================================="
+        echo "版本: v${{ steps.extract.outputs.version }}"
+        echo "如需重新发布，请先删除标签："
+        echo "git tag -d v${{ steps.extract.outputs.version }}"
+        echo "git push origin :refs/tags/v${{ steps.extract.outputs.version }}"
+        echo "========================================="
