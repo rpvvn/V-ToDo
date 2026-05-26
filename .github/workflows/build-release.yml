@@ -48,6 +48,6 @@ jobs:
         draft: false
         prerelease: false
         body_path: RELEASE_NOTES.md
-        generate_release_notes: true
+        generate_release_notes: false  # 改为 false，避免与 body_path 冲突
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

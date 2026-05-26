@@ -159,7 +159,7 @@ class UpdateChecker:
 # 示例用法
 if __name__ == "__main__":
     # 测试更新检查
-    checker = UpdateChecker("rpvvn", "VV_TODO", "3.1")
+    checker = UpdateChecker("rpvvn", "V-ToDo", "3.1")
     result = checker.check_for_updates()
 
     print("检查更新结果:")

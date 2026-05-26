@@ -12,7 +12,7 @@ TODO 待办事项应用程序 v3.2
 import sys
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -26,7 +26,6 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QLineEdit,
     QPushButton,
-    QCalendarWidget,
     QDialog,
     QGraphicsDropShadowEffect,
     QTextEdit,
@@ -36,16 +35,16 @@ from PyQt5.QtWidgets import (
     QAction,
     QMessageBox,
 )
-from PyQt5.QtCore import Qt, QSettings, QPoint, QDate, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QSettings, QPoint, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtSvg import QSvgRenderer
 from icons import IconManager
 from update_checker import UpdateChecker
 
 # 应用版本号
-APP_VERSION = "3.2"
+APP_VERSION = "1.0"
 GITHUB_REPO_OWNER = "rpvvn"
-GITHUB_REPO_NAME = "VV_TODO"
+GITHUB_REPO_NAME = "V-ToDo"
 
 
 class UpdateCheckThread(QThread):
@@ -63,75 +62,47 @@ class UpdateCheckThread(QThread):
         self.update_checked.emit(result)
 
 
-class CalendarDialog(QDialog):
-    """日历选择对话框"""
+class ScrollDatePicker(QDialog):
+    """滚动日期选择器"""
 
     def __init__(self, parent=None, current_date=None, is_dark_mode=True):
         super().__init__(parent)
         self.selected_date = None
         self.is_dark_mode = is_dark_mode
-        self.setup_ui(current_date)
+        self.current_year = datetime.now().year
+        self.current_month = datetime.now().month
+        self.current_day = datetime.now().day
 
-    def setup_ui(self, current_date):
+        # 解析当前日期
+        if current_date:
+            try:
+                date_obj = datetime.strptime(current_date, "%Y-%m-%d")
+                self.current_year = date_obj.year
+                self.current_month = date_obj.month
+                self.current_day = date_obj.day
+            except:
+                pass
+
+        self.setup_ui()
+
+    def setup_ui(self):
         """设置UI"""
         self.setWindowTitle("选择日期")
         self.setModal(True)
-        self.setFixedSize(350, 350)
+        self.setFixedSize(400, 300)
 
-        # 根据主题设置样式
+        # 设置对话框样式
         if self.is_dark_mode:
             self.setStyleSheet(
                 """
                 QDialog {
                     background-color: #2d2d2d;
-                }
-                QCalendarWidget {
-                    background-color: #2d2d2d;
-                }
-                /* 导航栏 */
-                QCalendarWidget QToolButton {
-                    background-color: #3d3d3d;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 5px;
-                }
-                QCalendarWidget QToolButton:hover {
-                    background-color: #4d4d4d;
-                }
-                QCalendarWidget QToolButton::menu-indicator {
-                    image: none;
-                }
-                /* 月份年份标题 */
-                QCalendarWidget QWidget#qt_calendar_navigationbar {
-                    background-color: #2d2d2d;
-                }
-                QCalendarWidget QSpinBox {
-                    background-color: #3d3d3d;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 5px;·
-                }
-                /* 星期标题 */
-                QCalendarWidget QWidget {
-                    alternate-background-color: #2d2d2d;
                     color: #ffffff;
                 }
-                /* 日期表格 */
-                QCalendarWidget QAbstractItemView {
-                    background-color: #2d2d2d;
-                    selection-background-color: #7c4dff;
-                    selection-color: #ffffff;
+                QLabel {
                     color: #ffffff;
+                    background-color: transparent;
                 }
-                QCalendarWidget QAbstractItemView:enabled {
-                    color: #ffffff;
-                }
-                QCalendarWidget QAbstractItemView:disabled {
-                    color: #666666;
-                }
-                /* 按钮 */
                 QPushButton {
                     background-color: #7c4dff;
                     color: #ffffff;
@@ -142,6 +113,14 @@ class CalendarDialog(QDialog):
                 }
                 QPushButton:hover {
                     background-color: #9575ff;
+                }
+                QScrollArea {
+                    background-color: #3d3d3d;
+                    border: 1px solid #555555;
+                    border-radius: 8px;
+                }
+                QScrollArea QWidget {
+                    background-color: transparent;
                 }
             """
             )
@@ -150,54 +129,12 @@ class CalendarDialog(QDialog):
                 """
                 QDialog {
                     background-color: #f5f5f5;
-                }
-                QCalendarWidget {
-                    background-color: #ffffff;
-                }
-                /* 导航栏 */
-                QCalendarWidget QToolButton {
-                    background-color: #f0f0f0;
-                    color: #333333;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 5px;
-                }
-                QCalendarWidget QToolButton:hover {
-                    background-color: #e0e0e0;
-                }
-                QCalendarWidget QToolButton::menu-indicator {
-                    image: none;
-                }
-                /* 月份年份标题 */
-                QCalendarWidget QWidget#qt_calendar_navigationbar {
-                    background-color: #ffffff;
-                }
-                QCalendarWidget QSpinBox {
-                    background-color: #f0f0f0;
-                    color: #333333;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 5px;
-                }
-                /* 星期标题 */
-                QCalendarWidget QWidget {
-                    alternate-background-color: #ffffff;
                     color: #333333;
                 }
-                /* 日期表格 */
-                QCalendarWidget QAbstractItemView {
-                    background-color: #ffffff;
-                    selection-background-color: #7c4dff;
-                    selection-color: #ffffff;
+                QLabel {
                     color: #333333;
+                    background-color: transparent;
                 }
-                QCalendarWidget QAbstractItemView:enabled {
-                    color: #333333;
-                }
-                QCalendarWidget QAbstractItemView:disabled {
-                    color: #999999;
-                }
-                /* 按钮 */
                 QPushButton {
                     background-color: #7c4dff;
                     color: #ffffff;
@@ -209,29 +146,106 @@ class CalendarDialog(QDialog):
                 QPushButton:hover {
                     background-color: #9575ff;
                 }
+                QScrollArea {
+                    background-color: #ffffff;
+                    border: 1px solid #cccccc;
+                    border-radius: 8px;
+                }
+                QScrollArea QWidget {
+                    background-color: transparent;
+                }
             """
             )
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
 
-        # 日历控件
-        self.calendar = QCalendarWidget(self)
-        self.calendar.setGridVisible(True)
+        # 标题
+        title_label = QLabel("选择日期", self)
+        title_label.setFont(QFont("Microsoft YaHei", 14, QFont.Bold))
+        title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title_label)
 
-        # 设置当前日期
-        if current_date:
-            try:
-                date_obj = datetime.strptime(current_date, "%Y-%m-%d")
-                self.calendar.setSelectedDate(
-                    QDate(date_obj.year, date_obj.month, date_obj.day)
-                )
-            except:
-                pass
+        # 滚动选择区域
+        scroll_layout = QHBoxLayout()
+        scroll_layout.setSpacing(10)
 
-        layout.addWidget(self.calendar)
+        # 年份选择
+        year_container = QVBoxLayout()
+        year_label = QLabel("年", self)
+        year_label.setFont(QFont("Microsoft YaHei", 10))
+        year_label.setAlignment(Qt.AlignCenter)
+        year_container.addWidget(year_label)
 
-        # 按钮
+        self.year_scroll = self.create_scroll_area()
+        self.year_scroll.setFixedSize(80, 120)
+        year_widget = QWidget()
+        year_layout = QVBoxLayout(year_widget)
+        year_layout.setSpacing(0)
+        year_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 添加年份选项（当前年份前后10年）
+        self.year_buttons = []
+        for year in range(self.current_year - 10, self.current_year + 11):
+            btn = self.create_date_button(str(year), year == self.current_year)
+            btn.clicked.connect(lambda checked, y=year: self.select_year(y))
+            self.year_buttons.append(btn)
+            year_layout.addWidget(btn)
+
+        self.year_scroll.setWidget(year_widget)
+        year_container.addWidget(self.year_scroll)
+        scroll_layout.addLayout(year_container)
+
+        # 月份选择
+        month_container = QVBoxLayout()
+        month_label = QLabel("月", self)
+        month_label.setFont(QFont("Microsoft YaHei", 10))
+        month_label.setAlignment(Qt.AlignCenter)
+        month_container.addWidget(month_label)
+
+        self.month_scroll = self.create_scroll_area()
+        self.month_scroll.setFixedSize(80, 120)
+        month_widget = QWidget()
+        month_layout = QVBoxLayout(month_widget)
+        month_layout.setSpacing(0)
+        month_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 添加月份选项
+        self.month_buttons = []
+        for month in range(1, 13):
+            btn = self.create_date_button(f"{month:02d}", month == self.current_month)
+            btn.clicked.connect(lambda checked, m=month: self.select_month(m))
+            self.month_buttons.append(btn)
+            month_layout.addWidget(btn)
+
+        self.month_scroll.setWidget(month_widget)
+        month_container.addWidget(self.month_scroll)
+        scroll_layout.addLayout(month_container)
+
+        # 日期选择
+        day_container = QVBoxLayout()
+        day_label = QLabel("日", self)
+        day_label.setFont(QFont("Microsoft YaHei", 10))
+        day_label.setAlignment(Qt.AlignCenter)
+        day_container.addWidget(day_label)
+
+        self.day_scroll = self.create_scroll_area()
+        self.day_scroll.setFixedSize(80, 120)
+        self.update_days()
+        day_container.addWidget(self.day_scroll)
+        scroll_layout.addLayout(day_container)
+
+        layout.addLayout(scroll_layout)
+
+        # 当前选择显示
+        self.current_selection = QLabel(self)
+        self.current_selection.setFont(QFont("Microsoft YaHei", 12))
+        self.current_selection.setAlignment(Qt.AlignCenter)
+        self.update_selection_display()
+        layout.addWidget(self.current_selection)
+
+        # 按钮区域
         btn_layout = QHBoxLayout()
 
         today_btn = QPushButton("今天", self)
@@ -254,9 +268,219 @@ class CalendarDialog(QDialog):
 
         layout.addLayout(btn_layout)
 
+    def create_scroll_area(self):
+        """创建滚动区域"""
+        scroll = QScrollArea(self)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setWidgetResizable(True)
+        return scroll
+
+    def create_date_button(self, text, selected=False):
+        """创建日期按钮"""
+        btn = QPushButton(text, self)
+        btn.setFixedHeight(30)
+        btn.setFont(QFont("Microsoft YaHei", 10))
+
+        if self.is_dark_mode:
+            if selected:
+                btn.setStyleSheet(
+                    """
+                    QPushButton {
+                        background-color: #7c4dff;
+                        color: #ffffff;
+                        border: none;
+                        border-radius: 4px;
+                        font-weight: bold;
+                    }
+                    QPushButton:hover {
+                        background-color: #9575ff;
+                    }
+                """
+                )
+            else:
+                btn.setStyleSheet(
+                    """
+                    QPushButton {
+                        background-color: transparent;
+                        color: #ffffff;
+                        border: none;
+                        border-radius: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: #4d4d4d;
+                    }
+                """
+                )
+        else:
+            if selected:
+                btn.setStyleSheet(
+                    """
+                    QPushButton {
+                        background-color: #7c4dff;
+                        color: #ffffff;
+                        border: none;
+                        border-radius: 4px;
+                        font-weight: bold;
+                    }
+                    QPushButton:hover {
+                        background-color: #9575ff;
+                    }
+                """
+                )
+            else:
+                btn.setStyleSheet(
+                    """
+                    QPushButton {
+                        background-color: transparent;
+                        color: #333333;
+                        border: none;
+                        border-radius: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: #f0f0f0;
+                    }
+                """
+                )
+
+        return btn
+
+    def select_year(self, year):
+        """选择年份"""
+        self.current_year = year
+        # 计算正确的按钮索引
+        base_year = datetime.now().year - 10  # 基准年份
+        year_index = year - base_year
+        if 0 <= year_index < len(self.year_buttons):
+            self.update_button_selection(self.year_buttons, year_index)
+        self.update_days()
+        self.update_selection_display()
+
+    def select_month(self, month):
+        """选择月份"""
+        self.current_month = month
+        self.update_button_selection(self.month_buttons, month - 1)
+        self.update_days()
+        self.update_selection_display()
+
+    def select_day(self, day):
+        """选择日期"""
+        self.current_day = day
+        self.update_button_selection(self.day_buttons, day - 1)
+        self.update_selection_display()
+
+    def update_button_selection(self, buttons, selected_index):
+        """更新按钮选择状态"""
+        for i, btn in enumerate(buttons):
+            if i == selected_index:
+                if self.is_dark_mode:
+                    btn.setStyleSheet(
+                        """
+                        QPushButton {
+                            background-color: #7c4dff;
+                            color: #ffffff;
+                            border: none;
+                            border-radius: 4px;
+                            font-weight: bold;
+                        }
+                        QPushButton:hover {
+                            background-color: #9575ff;
+                        }
+                    """
+                    )
+                else:
+                    btn.setStyleSheet(
+                        """
+                        QPushButton {
+                            background-color: #7c4dff;
+                            color: #ffffff;
+                            border: none;
+                            border-radius: 4px;
+                            font-weight: bold;
+                        }
+                        QPushButton:hover {
+                            background-color: #9575ff;
+                        }
+                    """
+                    )
+            else:
+                if self.is_dark_mode:
+                    btn.setStyleSheet(
+                        """
+                        QPushButton {
+                            background-color: transparent;
+                            color: #ffffff;
+                            border: none;
+                            border-radius: 4px;
+                        }
+                        QPushButton:hover {
+                            background-color: #4d4d4d;
+                        }
+                    """
+                    )
+                else:
+                    btn.setStyleSheet(
+                        """
+                        QPushButton {
+                            background-color: transparent;
+                            color: #333333;
+                            border: none;
+                            border-radius: 4px;
+                        }
+                        QPushButton:hover {
+                            background-color: #f0f0f0;
+                        }
+                    """
+                    )
+
+    def update_days(self):
+        """更新日期选项"""
+        # 计算当月天数
+        import calendar
+
+        days_in_month = calendar.monthrange(self.current_year, self.current_month)[1]
+
+        # 确保当前选择的日期不超过当月天数
+        if self.current_day > days_in_month:
+            self.current_day = days_in_month
+
+        day_widget = QWidget()
+        day_layout = QVBoxLayout(day_widget)
+        day_layout.setSpacing(0)
+        day_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.day_buttons = []
+        for day in range(1, days_in_month + 1):
+            btn = self.create_date_button(f"{day:02d}", day == self.current_day)
+            btn.clicked.connect(lambda checked, d=day: self.select_day(d))
+            self.day_buttons.append(btn)
+            day_layout.addWidget(btn)
+
+        self.day_scroll.setWidget(day_widget)
+
+    def update_selection_display(self):
+        """更新选择显示"""
+        date_str = (
+            f"{self.current_year}-{self.current_month:02d}-{self.current_day:02d}"
+        )
+        self.current_selection.setText(f"选择的日期: {date_str}")
+
     def select_today(self):
         """选择今天"""
-        self.calendar.setSelectedDate(QDate.currentDate())
+        today = datetime.now()
+        self.current_year = today.year
+        self.current_month = today.month
+        self.current_day = today.day
+
+        # 更新所有按钮状态
+        base_year = today.year - 10  # 基准年份
+        year_index = self.current_year - base_year
+        if 0 <= year_index < len(self.year_buttons):
+            self.update_button_selection(self.year_buttons, year_index)
+
+        self.update_button_selection(self.month_buttons, self.current_month - 1)
+        self.update_days()
+        self.update_selection_display()
 
     def clear_date(self):
         """清除日期"""
@@ -265,8 +489,9 @@ class CalendarDialog(QDialog):
 
     def accept_date(self):
         """确认日期"""
-        date = self.calendar.selectedDate()
-        self.selected_date = date.toString("yyyy-MM-dd")
+        self.selected_date = (
+            f"{self.current_year}-{self.current_month:02d}-{self.current_day:02d}"
+        )
         self.accept()
 
 
@@ -287,7 +512,7 @@ class TodoItem(QWidget):
 
     def setup_ui(self):
         """设置UI"""
-        self.setFixedHeight(70)
+        self.setFixedHeight(75)  # 增加5px高度以适应两行文字
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(20, 10, 20, 10)
@@ -307,6 +532,9 @@ class TodoItem(QWidget):
         self.text_label = QLabel(self)
         self.text_label.setText(self.text_content)
         self.text_label.setFont(QFont("Microsoft YaHei", 11))
+        # 启用文本换行，设置最大宽度
+        self.text_label.setWordWrap(True)
+        self.text_label.setMaximumWidth(200)  # 限制文本宽度，确保不会过宽
         content_layout.addWidget(self.text_label)
 
         if self.date_content:
@@ -317,7 +545,181 @@ class TodoItem(QWidget):
 
         layout.addLayout(content_layout, 1)
 
+        # 状态显示区域（红框位置）
+        self.status_label = QLabel(self)
+        self.status_label.setFont(QFont("Microsoft YaHei", 9))
+        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setFixedSize(120, 40)
+        self.status_label.setStyleSheet(
+            """
+            QLabel {
+                border-radius: 8px;
+                padding: 5px;
+            }
+        """
+        )
+        layout.addWidget(self.status_label)
+
+        self.update_status_display()
         self.update_style()
+
+    def calculate_date_status(self):
+        """计算日期状态"""
+        if not self.date_content:
+            return "无日期", "normal"
+
+        try:
+            # 解析日期
+            target_date = datetime.strptime(self.date_content, "%Y-%m-%d").date()
+            today = datetime.now().date()
+
+            # 计算天数差
+            days_diff = (target_date - today).days
+
+            if days_diff < 0:
+                # 已过期
+                return f"已过期 {abs(days_diff)} 天", "expired"
+            elif days_diff == 0:
+                # 今天
+                return "今天到期", "today"
+            elif days_diff <= 3:
+                # 即将到期（3天内）
+                return f"剩余 {days_diff} 天", "warning"
+            else:
+                # 正常
+                return f"剩余 {days_diff} 天", "normal"
+        except:
+            return "日期错误", "error"
+
+    def update_status_display(self):
+        """更新状态显示"""
+        status_text, status_type = self.calculate_date_status()
+        self.status_label.setText(status_text)
+
+        # 根据状态类型设置颜色
+        if self.is_dark_mode:
+            if status_type == "expired":
+                # 已过期 - 红色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #ff5252;
+                        color: #ffffff;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
+            elif status_type == "today":
+                # 今天到期 - 橙色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #ff9800;
+                        color: #ffffff;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
+            elif status_type == "warning":
+                # 即将到期 - 黄色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #ffc107;
+                        color: #333333;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
+            elif status_type == "normal":
+                # 正常 - 绿色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #4caf50;
+                        color: #ffffff;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
+            else:
+                # 无日期或错误 - 灰色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #666666;
+                        color: #ffffff;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
+        else:
+            # 浅色模式
+            if status_type == "expired":
+                # 已过期 - 红色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #f44336;
+                        color: #ffffff;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
+            elif status_type == "today":
+                # 今天到期 - 橙色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #ff9800;
+                        color: #ffffff;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
+            elif status_type == "warning":
+                # 即将到期 - 黄色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #ffeb3b;
+                        color: #333333;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
+            elif status_type == "normal":
+                # 正常 - 绿色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #4caf50;
+                        color: #ffffff;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
+            else:
+                # 无日期或错误 - 灰色
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #9e9e9e;
+                        color: #ffffff;
+                        border-radius: 8px;
+                        padding: 5px;
+                    }
+                """
+                )
 
     def on_state_changed(self, state):
         """复选框状态改变"""
@@ -413,6 +815,10 @@ class TodoItem(QWidget):
                         "color: #666666; background-color: transparent;"
                     )
 
+        # 更新状态显示
+        if hasattr(self, "status_label"):
+            self.update_status_display()
+
     def set_theme(self, is_dark_mode):
         """设置主题"""
         self.is_dark_mode = is_dark_mode
@@ -445,6 +851,7 @@ class AddTodoPanel(QWidget):
 
         # 标题栏
         title_layout = QHBoxLayout()
+        title_layout.setSpacing(10)
 
         self.title = QLabel("添加新待办", self)
         self.title.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
@@ -478,8 +885,15 @@ class AddTodoPanel(QWidget):
         self.input_field.setFixedHeight(120)
         layout.addWidget(self.input_field)
 
-        # 日期选择
-        date_layout = QHBoxLayout()
+        # 添加更大的分隔间距，让日期选择区域向下移动
+        layout.addSpacing(45)
+
+        # 日期选择区域
+        self.date_container = QWidget(self)
+        self.date_container.setFixedHeight(50)  # 固定高度确保稳定显示
+        date_layout = QHBoxLayout(self.date_container)
+        date_layout.setContentsMargins(0, 10, 0, 10)
+        date_layout.setSpacing(15)
 
         self.date_display = QLabel("未设置日期", self)
         self.date_display.setFont(QFont("Microsoft YaHei", 10))
@@ -488,15 +902,18 @@ class AddTodoPanel(QWidget):
         date_layout.addStretch()
 
         self.select_date_btn = QPushButton("选择日期", self)
+        self.select_date_btn.setFixedHeight(30)
         self.select_date_btn.clicked.connect(self.select_date)
         date_layout.addWidget(self.select_date_btn)
 
-        layout.addLayout(date_layout)
+        layout.addWidget(self.date_container)
         layout.addStretch()
 
     def select_date(self):
         """选择日期"""
-        dialog = CalendarDialog(self, self.selected_date, self.main_window.is_dark_mode)
+        dialog = ScrollDatePicker(
+            self, self.selected_date, self.main_window.is_dark_mode
+        )
         if dialog.exec_() == QDialog.Accepted:
             self.selected_date = dialog.selected_date
             if self.selected_date:
@@ -528,7 +945,16 @@ class AddTodoPanel(QWidget):
             self.title.setStyleSheet("color: #ffffff; background-color: transparent;")
             self.hint.setStyleSheet("color: #7c4dff; background-color: transparent;")
             self.date_display.setStyleSheet(
-                "color: #999999; background-color: transparent;"
+                "color: #999999; background-color: transparent; padding: 5px;"
+            )
+            # 日期容器样式
+            self.date_container.setStyleSheet(
+                """
+                QWidget {
+                    background-color: transparent;
+                    border: none;
+                }
+                """
             )
             self.input_field.setStyleSheet(
                 """
@@ -544,26 +970,30 @@ class AddTodoPanel(QWidget):
             self.confirm_btn.setStyleSheet(
                 """
                 QPushButton {
-                    background-color: transparent;
+                    background-color: #4caf50;
                     color: #ffffff;
                     border: none;
-                    font-size: 20pt;
+                    border-radius: 20px;
+                    font-size: 16pt;
+                    font-weight: bold;
                 }
                 QPushButton:hover {
-                    color: #7c4dff;
+                    background-color: #66bb6a;
                 }
             """
             )
             self.cancel_btn.setStyleSheet(
                 """
                 QPushButton {
-                    background-color: transparent;
+                    background-color: #f44336;
                     color: #ffffff;
                     border: none;
-                    font-size: 20pt;
+                    border-radius: 20px;
+                    font-size: 16pt;
+                    font-weight: bold;
                 }
                 QPushButton:hover {
-                    color: #ff5252;
+                    background-color: #ef5350;
                 }
             """
             )
@@ -587,7 +1017,16 @@ class AddTodoPanel(QWidget):
             self.title.setStyleSheet("color: #333333; background-color: transparent;")
             self.hint.setStyleSheet("color: #7c4dff; background-color: transparent;")
             self.date_display.setStyleSheet(
-                "color: #666666; background-color: transparent;"
+                "color: #666666; background-color: transparent; padding: 5px;"
+            )
+            # 日期容器样式
+            self.date_container.setStyleSheet(
+                """
+                QWidget {
+                    background-color: transparent;
+                    border: none;
+                }
+                """
             )
             self.input_field.setStyleSheet(
                 """
@@ -603,26 +1042,30 @@ class AddTodoPanel(QWidget):
             self.confirm_btn.setStyleSheet(
                 """
                 QPushButton {
-                    background-color: transparent;
-                    color: #333333;
+                    background-color: #4caf50;
+                    color: #ffffff;
                     border: none;
-                    font-size: 20pt;
+                    border-radius: 20px;
+                    font-size: 16pt;
+                    font-weight: bold;
                 }
                 QPushButton:hover {
-                    color: #7c4dff;
+                    background-color: #66bb6a;
                 }
             """
             )
             self.cancel_btn.setStyleSheet(
                 """
                 QPushButton {
-                    background-color: transparent;
-                    color: #333333;
+                    background-color: #f44336;
+                    color: #ffffff;
                     border: none;
-                    font-size: 20pt;
+                    border-radius: 20px;
+                    font-size: 16pt;
+                    font-weight: bold;
                 }
                 QPushButton:hover {
-                    color: #ff5252;
+                    background-color: #ef5350;
                 }
             """
             )
@@ -1074,7 +1517,7 @@ class SettingsPanel(QWidget):
         """打开 GitHub 页面"""
         import webbrowser
 
-        webbrowser.open("https://github.com/rpvvn/VV_TODO")
+        webbrowser.open("https://github.com/rpvvn/V-ToDo")
 
     def check_for_updates(self):
         """检查更新"""
@@ -1521,21 +1964,16 @@ class TodoListPanel(QWidget):
         layout.addWidget(self.category_container)
         layout.addSpacing(10)
 
-        # 滚动区域
-        scroll = QScrollArea(self)
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("background-color: transparent; border: none;")
-
-        self.todo_container = QWidget()
+        # 待办事项容器 - 移除滚动区域，直接使用垂直布局
+        self.todo_container = QWidget(self)
         self.todo_container.setStyleSheet("background-color: transparent;")
         self.todo_layout = QVBoxLayout(self.todo_container)
         self.todo_layout.setContentsMargins(0, 0, 0, 0)
         self.todo_layout.setSpacing(2)
-        self.todo_layout.addStretch()
+        # 添加顶部对齐，确保待办事项从上方开始显示
+        self.todo_layout.setAlignment(Qt.AlignTop)
 
-        scroll.setWidget(self.todo_container)
-        layout.addWidget(scroll, 1)
+        layout.addWidget(self.todo_container, 1)  # 添加stretch factor
 
         # 底部按钮区域
         self.bottom_buttons = QWidget(self)
@@ -1586,14 +2024,18 @@ class TodoListPanel(QWidget):
         )
         self.todo_items.append(todo_item)
 
-        # 插入到布局中（在stretch之前）
-        self.todo_layout.insertWidget(self.todo_layout.count() - 1, todo_item)
+        # 直接添加到布局中
+        self.todo_layout.addWidget(todo_item)
 
         # 更新标题
         self.update_title()
 
         # 保存
         self.save_todos()
+
+        # 调整窗口高度
+        if hasattr(self.main_window, "adjust_window_height"):
+            self.main_window.adjust_window_height()
 
     def remove_todo(self, todo_item):
         """移除待办事项"""
@@ -1636,10 +2078,11 @@ class TodoListPanel(QWidget):
                         self.main_window.is_dark_mode,
                     )
                     self.todo_items.append(todo_item)
-                    self.todo_layout.insertWidget(
-                        self.todo_layout.count() - 1, todo_item
-                    )
+                    self.todo_layout.addWidget(todo_item)
                 self.update_title()
+                # 加载完成后调整窗口高度
+                if hasattr(self.main_window, "adjust_window_height"):
+                    self.main_window.adjust_window_height()
         except FileNotFoundError:
             pass
         except Exception as e:
@@ -1742,9 +2185,9 @@ class TodoApp(QMainWindow):
         """设置窗口"""
         self.setWindowTitle("TODO 待办事项")
         # 初始窗口大小 - 会根据内容自动调整（增加宽度以适应设置面板）
-        self.setGeometry(100, 100, 380, 140)
-        # 设置最小宽度，防止文字折叠
-        self.setMinimumWidth(380)
+        self.setGeometry(100, 100, 360, 140)
+        # 设置最小宽度，防止文字折叠（缩减宽度到85%）
+        self.setMinimumWidth(360)
 
         # 设置窗口标志 - 无边框，背景透明，工具窗口（不显示在任务栏）
         flags = Qt.FramelessWindowHint | Qt.Tool
@@ -1990,8 +2433,9 @@ class TodoApp(QMainWindow):
 
         # 根据显示的面板计算内容高度
         if self.add_panel_visible:
-            # 添加面板固定高度
-            content_height = 200
+            # 添加面板固定高度 - 调整高度以适应增加的间距
+            # 标题栏: 60, 提示文字: 30, 输入框: 120, 间距: 25, 日期选择: 50, 底部间距: 25
+            content_height = 320
         elif self.settings_panel_visible:
             # 设置面板 - 根据内容动态计算高度
             # 标题 + 间距: 约 60
@@ -2004,17 +2448,16 @@ class TodoApp(QMainWindow):
             content_height = 50 + 300 + 80 + 70 + 70 + 50 + 90
             # 总计约 710
         else:
-            # 待办列表面板 - 根据项目数量动态计算
+            # 待办列表面板 - 根据实际项目数量动态计算（无最大限制）
             category_height = 60
             bottom_buttons_height = 60
-            item_height = 72  # 每个待办项的高度（70 + 2间隔）
+            item_height = 77  # 每个待办项的高度（75 + 2间隔）
 
             todo_count = len(self.todo_panel.todo_items)
 
-            # 至少显示3个项目的空间，最多显示8个项目
+            # 至少显示3个项目的空间，但不设置最大限制
             min_items = 3
-            max_items = 8
-            display_items = max(min_items, min(todo_count, max_items))
+            display_items = max(min_items, todo_count)
 
             items_height = display_items * item_height
             content_height = category_height + items_height + bottom_buttons_height + 30
@@ -2022,10 +2465,10 @@ class TodoApp(QMainWindow):
         # 计算总高度
         total_height = top_bar_height + spacing + content_height
 
-        # 设置窗口大小 - 保持最小宽度（增加到380以适应设置面板）
+        # 设置窗口大小 - 保持最小宽度（增加到480以适应状态显示）
         self.setFixedHeight(total_height)
-        if self.width() < 380:
-            self.setFixedWidth(380)
+        if self.width() < 480:
+            self.setFixedWidth(480)
         else:
             self.setFixedWidth(self.width())
 

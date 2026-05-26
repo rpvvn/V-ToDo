@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/python-3.7+-green)
 ![PyQt5](https://img.shields.io/badge/PyQt5-5.15+-orange)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
-![Build](https://github.com/rpvvn/VV_TODO/actions/workflows/build-release.yml/badge.svg)
+![Build](https://github.com/rpvvn/V-ToDo/actions/workflows/build-release.yml/badge.svg)
 
 一个现代化、美观的桌面待办事项应用程序，使用 PyQt5 构建
 

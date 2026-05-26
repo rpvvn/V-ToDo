@@ -26,10 +26,38 @@ jobs:
       id: extract
       shell: pwsh
       run: |
-        # 读取 RELEASE_NOTES.md
-        $content = Get-Content -Path "RELEASE_NOTES.md" -Raw -Encoding UTF8
+        # 检查当前工作目录和文件是否存在
+        Write-Output "当前工作目录: $(Get-Location)"
+        Write-Output "文件列表:"
+        Get-ChildItem -Name | ForEach-Object { Write-Output "  $_" }
         
-        # 提取第一个版本号（## v3.2 格式）
+        # 检查 RELEASE_NOTES.md 是否存在
+        $releaseNotesPath = "RELEASE_NOTES.md"
+        if (-not (Test-Path $releaseNotesPath)) {
+          Write-Error "RELEASE_NOTES.md 文件不存在于路径: $(Resolve-Path .)\$releaseNotesPath"
+          Write-Output "尝试列出当前目录的所有 .md 文件:"
+          Get-ChildItem -Filter "*.md" | ForEach-Object { Write-Output "  $($_.Name)" }
+          exit 1
+        }
+        
+        Write-Output "✓ 找到 RELEASE_NOTES.md 文件"
+        
+        # 读取 RELEASE_NOTES.md，尝试多种编码方式
+        try {
+          $content = Get-Content -Path $releaseNotesPath -Raw -Encoding UTF8
+          Write-Output "✓ 使用 UTF8 编码成功读取文件"
+        } catch {
+          Write-Output "UTF8 读取失败，尝试默认编码..."
+          try {
+            $content = Get-Content -Path $releaseNotesPath -Raw
+            Write-Output "✓ 使用默认编码成功读取文件"
+          } catch {
+            Write-Error "无法读取 RELEASE_NOTES.md 文件: $($_.Exception.Message)"
+            exit 1
+          }
+        }
+        
+        # 提取第一个版本号（## v1.0 格式）
         if ($content -match '##\s+v([\d.]+)') {
           $version = $matches[1]
           Write-Output "version=$version" >> $env:GITHUB_OUTPUT

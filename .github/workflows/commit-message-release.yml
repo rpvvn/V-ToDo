@@ -46,21 +46,48 @@ jobs:
       run: |
         $version = "${{ steps.check_commit.outputs.version }}"
         
+        # 检查当前工作目录
+        Write-Host "当前工作目录: $(Get-Location)"
+        Write-Host "文件列表:"
+        Get-ChildItem -Name | ForEach-Object { Write-Host "  $_" }
+        
         # 检查 RELEASE_NOTES.md 是否存在
         if (Test-Path "RELEASE_NOTES.md") {
-          $content = Get-Content -Path "RELEASE_NOTES.md" -Raw -Encoding UTF8
+          Write-Host "✓ 找到 RELEASE_NOTES.md 文件"
+          
+          # 尝试读取文件，使用多种编码方式
+          try {
+            $content = Get-Content -Path "RELEASE_NOTES.md" -Raw -Encoding UTF8
+            Write-Host "✓ 使用 UTF8 编码成功读取文件"
+          } catch {
+            Write-Host "UTF8 读取失败，尝试默认编码..."
+            try {
+              $content = Get-Content -Path "RELEASE_NOTES.md" -Raw
+              Write-Host "✓ 使用默认编码成功读取文件"
+            } catch {
+              Write-Host "⚠️ 无法读取 RELEASE_NOTES.md 文件: $($_.Exception.Message)"
+              $content = $null
+            }
+          }
           
           # 提取对应版本的描述
-          $pattern = "(?s)(##\s+v$version.*?)(?=##\s+v[\d.]+|$)"
-          if ($content -match $pattern) {
-            $description = $matches[1].Trim()
-            $description | Out-File -FilePath "release_body.md" -Encoding UTF8
-            Write-Host "✓ 已提取版本 v$version 的描述"
+          if ($content) {
+            $pattern = "(?s)(##\s+v$version.*?)(?=##\s+v[\d.]+|$)"
+            if ($content -match $pattern) {
+              $description = $matches[1].Trim()
+              $description | Out-File -FilePath "release_body.md" -Encoding UTF8
+              Write-Host "✓ 已提取版本 v$version 的描述"
+            } else {
+              # 如果找不到对应版本，使用 commit 消息
+              $commitMessage = git log -1 --pretty=%B
+              $commitMessage | Out-File -FilePath "release_body.md" -Encoding UTF8
+              Write-Host "⚠️ 未找到版本描述，使用 commit 消息"
+            }
           } else {
-            # 如果找不到对应版本，使用 commit 消息
+            # 如果读取失败，使用 commit 消息
             $commitMessage = git log -1 --pretty=%B
             $commitMessage | Out-File -FilePath "release_body.md" -Encoding UTF8
-            Write-Host "⚠️ 未找到版本描述，使用 commit 消息"
+            Write-Host "⚠️ 文件读取失败，使用 commit 消息"
           }
         } else {
           # 如果没有 RELEASE_NOTES.md，使用 commit 消息
