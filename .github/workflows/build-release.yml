@@ -42,31 +42,47 @@ jobs:
         $version = "${{ github.ref_name }}"
         $version = $version -replace '^v', ''
         
+        Write-Host "当前工作目录: $(Get-Location)"
         Write-Host "提取版本 v$version 的描述..."
         
         # 检查 RELEASE_NOTES.md 是否存在
         if (Test-Path "RELEASE_NOTES.md") {
+          Write-Host "✓ 找到 RELEASE_NOTES.md"
           try {
             $content = Get-Content -Path "RELEASE_NOTES.md" -Raw -Encoding UTF8
+            Write-Host "✓ 成功读取文件，长度: $($content.Length)"
             
             # 提取对应版本的描述
             $pattern = "(?s)(##\s+v$version.*?)(?=##\s+v[\d.]+|$)"
             if ($content -match $pattern) {
               $description = $matches[1].Trim()
-              $description | Out-File -FilePath "release_body.md" -Encoding UTF8
-              Write-Host "✓ 已提取版本 v$version 的描述"
+              $description | Out-File -FilePath "release_body.md" -Encoding UTF8 -NoNewline
+              Write-Host "✓ 已提取版本 v$version 的描述到 release_body.md"
+              Write-Host "描述长度: $($description.Length)"
             } else {
               # 如果找不到对应版本，使用整个文件
               Write-Host "⚠️ 未找到版本 v$version 的描述，使用整个 RELEASE_NOTES.md"
-              $content | Out-File -FilePath "release_body.md" -Encoding UTF8
+              $content | Out-File -FilePath "release_body.md" -Encoding UTF8 -NoNewline
             }
           } catch {
-            Write-Host "⚠️ 读取 RELEASE_NOTES.md 失败，使用默认描述"
-            "Release v$version" | Out-File -FilePath "release_body.md" -Encoding UTF8
+            Write-Host "⚠️ 读取 RELEASE_NOTES.md 失败: $($_.Exception.Message)"
+            "Release v$version" | Out-File -FilePath "release_body.md" -Encoding UTF8 -NoNewline
           }
         } else {
-          Write-Host "⚠️ RELEASE_NOTES.md 不存在，使用默认描述"
-          "Release v$version" | Out-File -FilePath "release_body.md" -Encoding UTF8
+          Write-Host "⚠️ RELEASE_NOTES.md 不存在"
+          Write-Host "当前目录文件列表:"
+          Get-ChildItem | ForEach-Object { Write-Host "  $($_.Name)" }
+          "Release v$version" | Out-File -FilePath "release_body.md" -Encoding UTF8 -NoNewline
+        }
+        
+        # 验证 release_body.md 已创建
+        if (Test-Path "release_body.md") {
+          Write-Host "✓ release_body.md 已创建"
+          $bodyContent = Get-Content -Path "release_body.md" -Raw
+          Write-Host "内容预览 (前100字符): $($bodyContent.Substring(0, [Math]::Min(100, $bodyContent.Length)))"
+        } else {
+          Write-Host "✗ release_body.md 创建失败"
+          exit 1
         }
     
     - name: 上传构建产物

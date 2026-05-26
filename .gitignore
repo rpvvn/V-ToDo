@@ -59,6 +59,7 @@ test_*.py
 *.md
 !README.md
 !README_CN.md
+!RELEASE_NOTES.md
 
 # 批处理脚本（本地使用，但保留快速打包.bat）
 一键安装并打包.bat
